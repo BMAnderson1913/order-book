@@ -1,18 +1,35 @@
-const reconcileOrder = (incomingOrder, existingBook) => {
-  let newBook = []
+const reconcileOrder = (existingBook, incomingOrder) => {
+  const oppositeOrders = existingBook.filter(order => order.type !== incomingOrder.type)
+  let updatedBook = existingBook.filter(order => order.type === incomingOrder.type)
 
-  while (incomingOrder.length && existingBook.length) {
-    if incomingOrder[0] <= existingBook[0] {
-      newBook.push(incomingOrder.shift())
-    } else {
-      newBook.push(existingBook.shift())
-    }
-  }
+  updatedBook = existingBook.length ? updatedBook.concat(fillOrAddOrder(oppositeOrders, incomingOrder))
+    : updatedBook.concat(incomingOrder)
 
-  //I want to add something to my loop to check for/remove dupes
-  return newBook.concat(incomingOrder).concat(existingBook)
+  return updatedBook
 }
 
-//Treat the existingBook as an array
-//Create a function to search through the array for incomingOrder
-//if incomingOrder is not there, add it to existingBook
+const fillOrAddOrder = (existing, incoming) => {
+  const index = incoming.type === 'sell'
+    ? existing.findIndex(order => order.price >= incoming.price)
+    : existing.findIndex(order => order.price <= incoming.price)
+
+  return index < 0 ? existing.concat(incoming)
+    : matchQuantities(existing, incoming, index)
+}
+
+const matchQuantities = (existing, incoming, index) => {
+  if (existing[index].quantity === incoming.quantity) {
+    existing.splice(index, 1)
+    return existing
+  } else if (existing[index].quantity > incoming.quantity) {
+    existing[index].quantity -= incoming.quantity
+    return existing
+  } else if (existing[index].quantity < incoming.quantity) {
+    incoming.quantity -= existing[index].quantity
+    existing.splice(index, 1)
+    return fillOrAddOrder(existing, incoming)
+  }
+}
+
+module.exports = reconcileOrder
+
